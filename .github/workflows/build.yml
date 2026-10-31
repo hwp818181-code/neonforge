@@ -104,7 +104,6 @@ jobs:
             --firmware-chroot true \
             --chroot-filesystem squashfs \
             --compression xz \
-            --initramfs-compression xz \
             --memtest none \
             --win32-loader false \
             --debian-installer none \
