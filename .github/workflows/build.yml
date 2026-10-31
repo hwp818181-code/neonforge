@@ -115,7 +115,9 @@ jobs:
 
       - name: lb build
         working-directory: work
-        run: lb build 2>&1 | tee build.log
+run: |
+          set -o pipefail
+          lb build 2>&1 | tee build.log
 
       - name: Collect artefact
         if: always()
