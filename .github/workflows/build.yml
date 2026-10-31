@@ -44,22 +44,24 @@ jobs:
           sudo apt-get install -y --no-install-recommends grub-efi-arm64-bin
 
       - name: Assemble live-build tree
-        run: |
-          set -e
-          rm -rf work && mkdir -p work/config
-          cp -a config-common/. work/config/
-          cp -a config-${ARCH}/. work/config/
-          chmod +x work/auto/config
-          find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
         env:
           ARCH: ${{ matrix.arch }}
+        run: |
+          set -e
+          rm -rf work
+          mkdir -p work/config
+          cp -a config-common/. work/config/
+          cp -a config-${ARCH}/. work/config/
+          find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
+          find work/config/includes.chroot -name '*.desktop' -exec chmod +x {} \;
+          find work/config/includes.chroot -name 'neonforge-welcome' -exec chmod +x {} \;
+          echo "--- tree check ---"
+          ls -R work/config | head -n 80
 
       - name: Normalise line endings
         run: |
           set -e
           find work -type f -exec sed -i 's/\r$//' {} +
-          chmod +x work/auto/config
-          cp -a config-common/auto work/auto
           find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
           find work/config/includes.chroot -name '*.desktop' -exec chmod +x {} \;
 
@@ -67,7 +69,44 @@ jobs:
         working-directory: work
         env:
           NF_ARCH: ${{ matrix.arch }}
-        run: sudo -E lb config
+        run: |
+          set -e
+          if [ "$NF_ARCH" = "amd64" ]; then
+            BOOTLOADERS="syslinux,grub-efi"
+          else
+            BOOTLOADERS="grub-efi"
+          fi
+          sudo lb config noauto \
+            --mode debian \
+            --distribution trixie \
+            --architectures "$NF_ARCH" \
+            --binary-images iso-hybrid \
+            --bootloaders "$BOOTLOADERS" \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --mirror-bootstrap "http://deb.debian.org/debian/" \
+            --mirror-chroot "http://deb.debian.org/debian/" \
+            --mirror-binary "http://deb.debian.org/debian/" \
+            --mirror-chroot-security "http://security.debian.org/debian-security/" \
+            --mirror-binary-security "http://security.debian.org/debian-security/" \
+            --security true \
+            --updates true \
+            --backports false \
+            --bootappend-live "boot=live components quiet splash loglevel=3 username=gamer hostname=neonforge locales=en_US.UTF-8 keyboard-layouts=us persistence persistence-label=persistence" \
+            --apt-recommends true \
+            --apt-indices false \
+            --firmware-chroot true \
+            --chroot-filesystem squashfs \
+            --compression xz \
+            --compression-level 6 \
+            --initramfs-compression xz \
+            --memtest none \
+            --win32-loader false \
+            --debian-installer none \
+            --iso-application "Neonforge Linux" \
+            --iso-preparer "Neonforge Linux project" \
+            --iso-publisher "Neonforge Linux project" \
+            --iso-volume "NEONFORGE_1_0" \
+            --verbose
 
       - name: lb build
         working-directory: work
@@ -86,11 +125,12 @@ jobs:
           fi
 
       - name: Split ISO if above 1.9 GB
+        if: always()
         working-directory: out
         run: |
           set -e
           for f in *.iso; do
-            if [ "$(stat -c%s "$f")" -gt 1900000000 ]; then
+            if [ -f "$f" ] && [ "$(stat -c%s "$f")" -gt 1900000000 ]; then
               split -b 1800M -d "$f" "$f.part"
               rm "$f"
               printf 'cat %s.part* > %s\n' "$f" "$f" > "REJOIN-${{ matrix.arch }}.txt"
@@ -108,4 +148,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: out/*s
+          files: out/*
