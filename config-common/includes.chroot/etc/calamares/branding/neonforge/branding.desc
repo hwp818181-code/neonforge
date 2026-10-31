@@ -1,0 +1,18 @@
+---
+componentName: neonforge
+strings:
+  productName: Neonforge Linux
+  shortProductName: Neonforge
+  version: 1.0
+  shortVersion: "1.0"
+  versionedName: Neonforge Linux 1.0 (Arcade)
+  bootloaderEntryName: Neonforge
+  productUrl: https://example.invalid/neonforge
+  supportUrl: https://example.invalid/neonforge
+images:
+  productLogo: logo.png
+  productIcon: logo.png
+style:
+  sidebarBackground: "#12070f"
+  sidebarText: "#ffffff"
+  sidebarTextSelect: "#ff5a1f"

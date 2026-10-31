@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Get More Games
+Comment=Browse Flathub
+Exec=plasma-discover --mode=Installed
+Icon=system-software-install
+Terminal=false

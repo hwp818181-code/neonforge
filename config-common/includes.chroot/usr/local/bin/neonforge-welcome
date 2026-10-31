@@ -1,0 +1,21 @@
+#!/bin/sh
+ANSWER=$(kdialog --title "Welcome to Neonforge" --yesno \
+"Neonforge 1.0 (Arcade) is ready.
+
+Everything is preinstalled: Steam, Proton, gamescope, MangoHud, Lutris, RetroArch.
+Open Discover for more games and apps, or Flathub extras below.
+
+Install the popular extras now?
+
+  Discord / Heroic / Bottles / ProtonUp-Qt
+
+You can install these later from Discover > Flathub." 2>/dev/null && echo yes || echo no)
+
+if [ "$ANSWER" = "yes" ]; then
+  flatpak install --system -y --noninteractive flathub \
+    com.discordapp.Discord \
+    com.heroicgameslauncher.hgl \
+    com.usebottles.bottles 2>/dev/null
+  kdialog --title "Done" --msgbox "Extras installed. Launch them from the application menu." 2>/dev/null
+fi
+exit 0

@@ -1,0 +1,47 @@
+#!/bin/sh
+set -e
+export DEBIAN_FRONTEND=noninteractive
+ARCH=$(dpkg --print-architecture)
+echo "$ARCH" > /etc/neonforge-arch
+
+apt-get update
+
+if [ "$ARCH" = "amd64" ]; then
+  dpkg --add-architecture i386
+  apt-get update
+fi
+
+apt-get install -y --no-install-recommends \
+  "linux-image-$ARCH" "linux-headers-$ARCH" firmware-linux-free zstd
+
+apt-get install -y --no-install-recommends \
+  firmware-misc-nonfree firmware-iwlwifi firmware-realtek firmware-atheros || true
+
+if [ "$ARCH" = "amd64" ]; then
+  apt-get install -y --no-install-recommends firmware-amd-graphics || true
+  apt-get install -y --no-install-recommends firmware-nvidia-graphics || true
+  apt-get install -y --no-install-recommends nvidia-driver || true
+  apt-get install -y --no-install-recommends nvidia-vulkan-icd || true
+  apt-get install -y --no-install-recommends nvidia-settings || true
+  apt-get install -y --no-install-recommends libgl1-mesa-dri:i386 || true
+  apt-get install -y --no-install-recommends mesa-vulkan-drivers:i386 || true
+  apt-get install -y --no-install-recommends libvulkan1:i386 || true
+  apt-get install -y --no-install-recommends steam-installer steam-devices steam-libs-i386
+  apt-get install -y --no-install-recommends protonup-qt || true
+fi
+
+if [ "$ARCH" = "arm64" ]; then
+  apt-get install -y --no-install-recommends firmware-qcom-soc || true
+  apt-get install -y --no-install-recommends box64 || true
+  apt-get install -y --no-install-recommends box86 || true
+  apt-get install -y --no-install-recommends fex-emu || true
+  apt-get install -y --no-install-recommends libretro-nestopia || true
+  apt-get install -y --no-install-recommends libretro-snes9x || true
+  apt-get install -y --no-install-recommends libretro-genesisplusgx || true
+  apt-get install -y --no-install-recommends libretro-mgba || true
+  apt-get install -y --no-install-recommends supertuxkart 0ad luanti xonotic teeworlds || true
+fi
+
+mkdir -p /etc/flatpak/remotes.d /var/lib/flatpak
+flatpak remote-add --system --if-not-exists flathub \
+  https://dl.flathub.org/repo/flathub.flatpakrepo || true

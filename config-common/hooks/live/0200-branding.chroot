@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+WALL=/usr/share/wallpapers/neonforge/contents/images
+mkdir -p "$WALL" /etc/neonforge /usr/lib
+
+cat > /usr/lib/os-release <<'EOF'
+PRETTY_NAME="Neonforge Linux 1.0 (Arcade)"
+NAME="Neonforge Linux"
+VERSION_ID="1.0"
+VERSION="1.0 (Arcade)"
+VERSION_CODENAME=arcade
+ID=neonforge
+ID_LIKE=debian
+HOME_URL="https://example.invalid/neonforge"
+ANSI_COLOR="1;35"
+EOF
+ln -sf ../usr/lib/os-release /etc/os-release
+printf 'Neonforge Linux 1.0 (Arcade) \\n \\l\n\n' > /etc/issue
+echo "1.0-arcade" > /etc/neonforge/release
+echo "neonforge" > /etc/hostname
+
+if [ ! -f "$WALL/wallpaper.png" ]; then
+  convert -size 1920x1080 gradient:'#12070f'-'#05070d' \
+    -fill '#ff5a1f' -draw "circle 960,600 960,430" \
+    -blur 0x40 "$WALL/wallpaper.png"
+fi
+
+mkdir -p /usr/share/plymouth/themes/neonforge
+cp /usr/share/plymouth/themes/bgrt/bgrt.plymouth \
+   /usr/share/plymouth/themes/neonforge/neonforge.plymouth 2>/dev/null || true
+sed -i 's/bgrt/neonforge/g' /usr/share/plymouth/themes/neonforge/neonforge.plymouth 2>/dev/null || true
+plymouth-set-default-theme neonforge 2>/dev/null || true
+update-initramfs -u -k all 2>/dev/null || true

@@ -1,0 +1,66 @@
+#!/bin/sh
+set -e
+id -u gamer >/dev/null 2>&1 || useradd -m -s /bin/bash gamer
+for g in audio video render input plugdev netdev bluetooth sudo lp; do
+  getent group "$g" >/dev/null && usermod -aG "$g" gamer
+done
+echo 'gamer:live' | chpasswd
+printf 'gamer ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-neonforge
+chmod 0440 /etc/sudoers.d/90-neonforge
+
+mkdir -p /etc/sddm.conf.d
+cat > /etc/sddm.conf.d/10-neonforge.conf <<'EOF'
+[Autologin]
+User=gamer
+Session=plasma
+Relogin=true
+
+[Theme]
+Current=breeze
+EOF
+
+mkdir -p /etc/xdg/autostart
+cat > /etc/xdg/autostart/00-neonforge-wallpaper.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Neonforge Wallpaper
+Exec=sh -c "sleep 3; plasma-apply-wallpaperimage /usr/share/wallpapers/neonforge/contents/images/wallpaper.png; plasma-apply-colorscheme BreezeDark"
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+EOF
+cat > /etc/xdg/autostart/01-neonforge-welcome.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Welcome
+Exec=/usr/local/bin/neonforge-welcome
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+EOF
+
+chmod +x /usr/local/bin/neonforge-welcome
+mkdir -p /home/gamer/Desktop
+cp -a /etc/skel/Desktop/. /home/gamer/Desktop/ 2>/dev/null || true
+chmod +x /home/gamer/Desktop/*.desktop 2>/dev/null || true
+chown -R gamer:gamer /home/gamer
+
+systemctl enable sddm.service
+systemctl enable bluetooth.service 2>/dev/null || true
+systemctl enable NetworkManager.service 2>/dev/null || true
+systemctl set-default graphical.target
+
+ARCH=$(dpkg --print-architecture)
+fail() { echo "BUILD CHECK FAILED: $*" >&2; exit 1; }
+[ -f /usr/bin/sddm ] || fail "sddm missing"
+[ -f /usr/bin/gamescope ] || fail "gamescope missing"
+[ -f /usr/bin/mangohud ] || fail "mangohud missing"
+[ -d /usr/share/wallpapers/neonforge ] || fail "branding missing"
+if [ "$ARCH" = "amd64" ]; then
+  [ -f /usr/share/applications/steam.desktop ] || fail "steam missing"
+  dpkg --print-foreign-architectures | grep -qx i386 || fail "i386 not enabled"
+fi
+
+apt-get clean
+rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+: > /etc/machine-id
+rm -rf /tmp/* /var/tmp/*
+echo "All checks passed."
