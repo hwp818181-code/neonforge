@@ -1,0 +1,110 @@
+name: Build Neonforge ISOs
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    name: build-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Common build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            live-build debootstrap squashfs-tools xorriso grub-common \
+            mtools dosfstools gdisk parted zip unzip xz-utils curl wget \
+            ca-certificates imagemagick file rsync
+
+      - name: amd64 bootloader dependencies
+        if: matrix.arch == 'amd64'
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            isolinux syslinux-common syslinux-efi grub-pc-bin grub-efi-amd64-bin
+
+      - name: arm64 bootloader dependencies
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get install -y --no-install-recommends grub-efi-arm64-bin
+
+      - name: Assemble live-build tree
+        run: |
+          set -e
+          rm -rf work && mkdir -p work/config
+          cp -a config-common/. work/config/
+          cp -a config-${ARCH}/. work/config/
+          chmod +x work/auto/config
+          find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
+        env:
+          ARCH: ${{ matrix.arch }}
+
+      - name: Normalise line endings
+        run: |
+          set -e
+          find work -type f -exec sed -i 's/\r$//' {} +
+          chmod +x work/auto/config
+          find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
+          find work/config/includes.chroot -name '*.desktop' -exec chmod +x {} \;
+
+      - name: lb config
+        working-directory: work
+        env:
+          NF_ARCH: ${{ matrix.arch }}
+        run: sudo -E lb config
+
+      - name: lb build
+        working-directory: work
+        run: sudo lb build 2>&1 | tee build.log
+
+      - name: Collect artefact
+        if: always()
+        working-directory: work
+        run: |
+          mkdir -p ../out
+          cp build.log ../out/build.log 2>/dev/null || true
+          ISO=$(ls live-image-*.hybrid.iso 2>/dev/null | head -n1) || true
+          if [ -n "$ISO" ]; then
+            cp "$ISO" "../out/neonforge-1.0-${{ matrix.arch }}.iso"
+            cd ../out && sha256sum *.iso > "SHA256SUMS-${{ matrix.arch }}.txt"
+          fi
+
+      - name: Split ISO if above 1.9 GB
+        working-directory: out
+        run: |
+          set -e
+          for f in *.iso; do
+            if [ "$(stat -c%s "$f")" -gt 1900000000 ]; then
+              split -b 1800M -d "$f" "$f.part"
+              rm "$f"
+              printf 'cat %s.part* > %s\n' "$f" "$f" > "REJOIN-${{ matrix.arch }}.txt"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neonforge-${{ matrix.arch }}
+          path: out/
+          retention-days: 14
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*s
