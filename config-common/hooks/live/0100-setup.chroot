@@ -3,20 +3,18 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 ARCH=$(dpkg --print-architecture)
 echo "$ARCH" > /etc/neonforge-arch
-
+mkdir -p /etc/apt/sources.list.d
+cat > /etc/apt/sources.list.d/backports.list <<'EOF'
+deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+EOF
 apt-get update
-
 if [ "$ARCH" = "amd64" ]; then
   dpkg --add-architecture i386
   apt-get update
 fi
-
-apt-get install -y --no-install-recommends \
-  "linux-image-$ARCH" "linux-headers-$ARCH" firmware-linux-free zstd
-
-apt-get install -y --no-install-recommends \
-  firmware-misc-nonfree firmware-iwlwifi firmware-realtek firmware-atheros || true
-
+apt-get install -y --no-install-recommends "linux-image-$ARCH" "linux-headers-$ARCH" firmware-linux-free zstd
+apt-get install -y --no-install-recommends firmware-misc-nonfree firmware-iwlwifi firmware-realtek firmware-atheros || true
+apt-get install -y --no-install-recommends -t trixie-backports gamescope || true
 if [ "$ARCH" = "amd64" ]; then
   apt-get install -y --no-install-recommends firmware-amd-graphics || true
   apt-get install -y --no-install-recommends firmware-nvidia-graphics || true
@@ -29,7 +27,6 @@ if [ "$ARCH" = "amd64" ]; then
   apt-get install -y --no-install-recommends steam-installer steam-devices steam-libs-i386
   apt-get install -y --no-install-recommends protonup-qt || true
 fi
-
 if [ "$ARCH" = "arm64" ]; then
   apt-get install -y --no-install-recommends firmware-qcom-soc || true
   apt-get install -y --no-install-recommends box64 || true
@@ -41,7 +38,5 @@ if [ "$ARCH" = "arm64" ]; then
   apt-get install -y --no-install-recommends libretro-mgba || true
   apt-get install -y --no-install-recommends supertuxkart 0ad luanti xonotic teeworlds || true
 fi
-
 mkdir -p /etc/flatpak/remotes.d /var/lib/flatpak
-flatpak remote-add --system --if-not-exists flathub \
-  https://dl.flathub.org/repo/flathub.flatpakrepo || true
+flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
