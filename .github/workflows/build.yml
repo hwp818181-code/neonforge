@@ -59,6 +59,7 @@ jobs:
           set -e
           find work -type f -exec sed -i 's/\r$//' {} +
           chmod +x work/auto/config
+          cp -a config-common/auto work/auto
           find work/config/hooks -name '*.chroot' -exec chmod +x {} \;
           find work/config/includes.chroot -name '*.desktop' -exec chmod +x {} \;
 
