@@ -21,27 +21,34 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 240
+    container:
+      image: debian:trixie
+      options: --privileged
     steps:
+      - name: Prepare container
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
 
-      - name: Common build dependencies
+      - name: Build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          apt-get install -y --no-install-recommends \
             live-build debootstrap squashfs-tools xorriso grub-common \
             mtools dosfstools gdisk parted zip unzip xz-utils curl wget \
-            ca-certificates imagemagick file rsync
+            imagemagick file rsync
 
       - name: amd64 bootloader dependencies
         if: matrix.arch == 'amd64'
         run: |
-          sudo apt-get install -y --no-install-recommends \
+          apt-get install -y --no-install-recommends \
             isolinux syslinux-common syslinux-efi grub-pc-bin grub-efi-amd64-bin
 
       - name: arm64 bootloader dependencies
         if: matrix.arch == 'arm64'
         run: |
-          sudo apt-get install -y --no-install-recommends grub-efi-arm64-bin
+          apt-get install -y --no-install-recommends grub-efi-arm64-bin
 
       - name: Assemble live-build tree
         env:
@@ -76,7 +83,7 @@ jobs:
           else
             BOOTLOADERS="grub-efi"
           fi
-          sudo lb config noauto \
+          lb config noauto \
             --mode debian \
             --distribution trixie \
             --architectures "$NF_ARCH" \
@@ -110,7 +117,7 @@ jobs:
 
       - name: lb build
         working-directory: work
-        run: sudo lb build 2>&1 | tee build.log
+        run: lb build 2>&1 | tee build.log
 
       - name: Collect artefact
         if: always()
