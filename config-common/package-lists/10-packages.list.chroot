@@ -14,7 +14,7 @@ kde-plasma-desktop
 sddm
 sddm-theme-breeze
 kde-config-sddm
-kde-config-bluetooth
+bluedevil
 kde-config-screenlocker
 discover
 plasma-discover-backend-flatpak
@@ -46,7 +46,6 @@ cups
 plymouth
 plymouth-themes
 xdg-user-dirs
-gamescope
 mangohud
 goverlay
 gamemode
